@@ -6,10 +6,51 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 
+const item_schema = new Schema(
+    {
+        text:{
+            type:String,
+            required:true
+        },
+        amount:{
+            type:String,
+            required:true
+        },
+        image:{
+            type:String,
+            required:false
+        }
+    }
+)
 
-const user_model = require('./models/user_model.js');
-const list_model = require('./models/list_model.js');
-const item_model = require('./models/item_model.js');
+const item_model = new mongoose.model(`item`, item_schema);
+
+const list_schema = new Schema({
+    text:{
+        type: String,
+        required: true
+    },
+    items:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"item",
+        req:true
+    }]
+
+})
+
+const list_model = new mongoose.model(`list`, list_schema);
+const user_schema = new Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    lists: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: `list`,
+        req: true
+    }]
+});
+const user_model = mongoose.model('user', user_schema);
 
 
 
