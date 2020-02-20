@@ -95,17 +95,6 @@ app.use((req,res,next)=>
 );
 
 
-app.use((req,res,next)=>
-{
-    if (!req.session.list) {
-        return next();
-     }
-    list_model.findById(req.session.list._id).then((list) =>
-    {
-        req.list = list;
-        next();
-    })
-})
 
 
 
@@ -119,8 +108,6 @@ app.get('/login', (req, res, next) => {
     res.write(`
     <html>
     <body>
-    <h1>Shoppinglist application by Teemu</h1>
-
         <form action="/login" method="POST">
             <input type="text" name="user_name">
             <button type="submit">Log in</button>
@@ -181,7 +168,6 @@ app.get('/', is_logged_handler, (req, res, next) => {
     res.write(`
     <html>
     <body>
-    <h1>Shoppinglist application by Teemu</h1>
         Logged in as user: ${user.name}
         <form action="/logout" method="POST">
             <button type="submit">Log out</button>
@@ -202,8 +188,8 @@ app.get('/', is_logged_handler, (req, res, next) => {
         <button type="submit">Add shoppinglist</button>
         </form>
 
-    </body>
     </html>
+    </body>
     `);
     res.end();
     });
@@ -273,26 +259,25 @@ app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>
         _id: req.params.id
 
     }).then((list)=>
-    {
-          
+    {  
         list.populate(`items`).execPopulate().then(()=>
         {
-            session.list = list;
-            lista=`<html> <body> <h1>Shoppinglist application by Teemu</h1>
-            <h2>Shoppinglist: ${list.text}</h2>`
-            lista+=`<ul>`;
+
+        let lista=`<ul>`;
 
         list.items.forEach((value,index)=>
         {   
             lista += `<form action="/deleteItem" method="POST"> `;
-            lista+=`<li><a href="">${value.text}  ${value.amount}</a>  </li>`;
+            lista+=`<li><a href=""">${value.text}  ${value.amount}</a>  </li>`;
             lista+=`<input type="hidden" name="id" value="${value._id}">`;
             lista+=`<input type="hidden" name="listId" value="${list._id}">`;
            lista+=`<button type="submit">Delete</button> </form>`;
         });
-        lista += `</ul></body></ht>`;
+        lista += `</ul>`;
        
-        res.write(`   ${lista}`);
+        res.write(`
+        <h1>Shoppinglist: ${list.text}</h1>
+        ${lista}`);
         res.write(`
         <form action="/addToList" method="POST">
         Name of the item
@@ -314,8 +299,8 @@ app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>
 app.post("/addToList",(req,res,next)=>
 {
     const user = req.user;
-    const list = session.list;
-    console.log(list._id);
+    const id =req.body.id;
+    console.log(id);
 
     let new_item = item_model(
         {
@@ -327,24 +312,28 @@ app.post("/addToList",(req,res,next)=>
     new_item.save().then(()=>
     {
         console.log("item saved");
-       list.items.push(new_item);
-    list.save().then(()=>
+        list_model.findOne({
+            _id: id
+        }).then((list)=>{
+            list.populate(`items`).execPopulate().then(()=>{
+                list.items.push(new_item);
+                list.save().then(()=>
                 {
-                    return res.redirect(`/shoppinglist/${list._id}`);
-                });
+                    return res.redirect(`/shoppinglist/${id}`);
+                });            
             });
         });
-    
+    });
+});
         
 app.post("/deleteItem",(req,res,next)=>
 {
-    
     const user = req.user;
 const item_id_to_delete = req.body.id;
-const list = session.list;
-console.log(list);
+const listId = req.body.listId;
+
 //remove item form user.notes
-const updated_lists = list.items.filter((item_id)=>
+const updated_lists = list.ites.filter((item_id)=>
 {
     return item_id != item_id_to_delete;
 });
@@ -354,8 +343,7 @@ list.save().then(()=>
 {
     item_model.findByIdAndRemove(item_id_to_delete).then(()=>
         {
-            console.log("Ei deleten loppuun");
-            return res.redirect(`/shoppinglist/${list._id}`);
+            res.redirect(`/`);
         });
    
 }

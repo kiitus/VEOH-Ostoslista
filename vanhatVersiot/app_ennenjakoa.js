@@ -6,20 +6,61 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 
+const item_schema = new Schema(
+    {
+        text:{
+            type:String,
+            required:true
+        },
+        amount:{
+            type:String,
+            required:true
+        },
+        image:{
+            type:String,
+            required:false
+        }
+    }
+)
 
-const user_model = require('./models/user_model.js');
-const list_model = require('./models/list_model.js');
-const item_model = require('./models/item_model.js');
+const item_model = new mongoose.model(`item`, item_schema);
+
+const list_schema = new Schema({
+    text:{
+        type: String,
+        required: true
+    },
+    items:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"item",
+        req:true
+    }]
+
+})
+
+const list_model = new mongoose.model(`list`, list_schema);
+const user_schema = new Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    lists: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: `list`,
+        req: true
+    }]
+});
+const user_model = mongoose.model('user', user_schema);
 
 
 
 let app = express();
 
-app.use(body_parser.urlencoded({            //tarvitaan post formin lähettämien tietojen käsittelyyn
+app.use(body_parser.urlencoded({
     extended: true
 }));
 
-app.use(session({               //Kirjatuneen muistissa pitoon (sessio)
+app.use(session({
     secret: '1234qwerty',
     resave: true,
     saveUninitialized: true,
@@ -28,14 +69,14 @@ app.use(session({               //Kirjatuneen muistissa pitoon (sessio)
     }
 }));
 
-const is_logged_handler = (req, res, next) => {    //tarkistaa onko kirjauduttu
+const is_logged_handler = (req, res, next) => {
     if (!req.session.user) {
         return res.redirect('/login');
     }
     next();
 };
 
-app.use((req,res,next)=>          //haetaan kirjautunut käyttäjä kannasta sessioon
+app.use((req,res,next)=>
 {
     if (!req.session.user) {
        return next();
@@ -54,7 +95,7 @@ app.use((req,res,next)=>          //haetaan kirjautunut käyttäjä kannasta ses
 );
 
 
-app.use((req,res,next)=>        //haetaan kirjautuneen lista kannasta sessioon (ei näin)
+app.use((req,res,next)=>
 {
     if (!req.session.list) {
         return next();
@@ -66,7 +107,7 @@ app.use((req,res,next)=>        //haetaan kirjautuneen lista kannasta sessioon (
     })
 })
 
-app.use(express.static('public'));   //staattinen kansio, muunmuassa CSS
+app.use(express.static('public'));
 
 
 app.use((req,res,next)=>{
@@ -74,10 +115,8 @@ app.use((req,res,next)=>{
     next();
 });
 
-
-//get ladataan osoite sivun pyynnöllä
-app.get('/login', (req, res, next) => {     //Login sivun lataus
-    console.log('user: ', req.session.user)    //Formi lähettään kirjautuvan nimimerkin
+app.get('/login', (req, res, next) => {
+    console.log('user: ', req.session.user)
     res.write(`
     <html>
     <head><meta charset="UTF-8">
@@ -88,7 +127,7 @@ app.get('/login', (req, res, next) => {     //Login sivun lataus
 
         <form action="/login" method="POST">
             <input type="text" name="user_name">
-            <button type="submit">Log in</button>          
+            <button type="submit">Log in</button>
         </form>
         <form action="/register" method="POST">
             <input type="text" name="user_name">
@@ -97,22 +136,20 @@ app.get('/login', (req, res, next) => {     //Login sivun lataus
     </body>
     <html>
     `);
-    res.end();              //Formi lähettää rekisteröityvän nimen
+    res.end();
 });
 
-
-//Post ladataan formin post toiminnolla
-app.post('/login', (req, res, next) => {            //sisään loggautuminen
+app.post('/login', (req, res, next) => {
     const user_name = req.body.user_name;
     user_model.findOne({
-        name: user_name             //Katsotaan löytyykö kannasta
+        name: user_name
     }).then((user) => {
         if (user) {
             req.session.user = user;
-            return res.redirect('/');           //jos löytyi kirjaudutaan sisään
+            return res.redirect('/');
         }
 
-        res.redirect('/login');         //Jos ei löydy takaisin kirjautumis sivulle
+        res.redirect('/login');
     });
 });
 
@@ -121,7 +158,7 @@ app.post('/login', (req, res, next) => {            //sisään loggautuminen
 app.post('/register', (req, res, next) => {
     const user_name = req.body.user_name;
     console.log("Hei");
-    user_model.findOne({                    	       //Tarkistetaan onko rekisteröitynyt jo
+    user_model.findOne({
         name: user_name
     }).then((user) => {
         if (user) {
@@ -129,11 +166,11 @@ app.post('/register', (req, res, next) => {
             return res.redirect('/login');
         }
 
-        let new_user = new user_model({         //luodaan uusi käyttäjä
+        let new_user = new user_model({
             name: user_name,
             lists: []
         });
-        new_user.save().then(() => {            //tallennetaan uusi käyttäjä ja ohjataan kirjautumis sivulle
+        new_user.save().then(() => {
             return res.redirect('/login');
         });
 
@@ -141,10 +178,10 @@ app.post('/register', (req, res, next) => {
 });
 
 
-app.get('/', is_logged_handler, (req, res, next) => {       //tarkistetaan onko kirjautunut
+app.get('/', is_logged_handler, (req, res, next) => {
     const user = req.user;
-    user.populate(`lists`).execPopulate().then(() =>{       //jos on, ladataan käyttäjän listat
-                                                            //tulostetaan otsikko, kirjautuja sekä log out nappi
+    user.populate(`lists`).execPopulate().then(() =>{
+        
     res.write(`
     <html>
     <head><meta charset="UTF-8">
@@ -157,13 +194,13 @@ app.get('/', is_logged_handler, (req, res, next) => {       //tarkistetaan onko 
             <button type="submit">Log out</button>
     </form><h2>Shoppinglists</h2>`);
 
-    user.lists.forEach(list => {                    //kirjoitetaan olemassa olevat listat html sivulle (myös delete nappi)
+    user.lists.forEach(list => {
          res.write(`<a href="\shoppinglist\\${list._id}">${list.text}</a>`);
         res.write(`<form action="delete-list" method="POST">
         <input type="hidden" name="list_id" value="${list._id}">
         <button type="submit"> Delete list</button>
         </form>`
-        )                                               //Luodaan lisäys formi
+        )
     });
     res.write(`
 
@@ -182,28 +219,28 @@ app.get('/', is_logged_handler, (req, res, next) => {       //tarkistetaan onko 
 });
 
 
-app.post('/logout', (req, res, next) => {       //log out(tuhoaa käyttäjän sessiosta)
+app.post('/logout', (req, res, next) => {
     req.session.destroy();
     res.redirect('/login');
 });
 
-app.post(`/add-list`,(req,res,next)=>       //listan lisäys
+app.post(`/add-list`,(req,res,next)=>
 {
     const user = req.user;
 
 
 
-    let new_list = list_model(      //luodaan uusi lista
+    let new_list = list_model(
         {
             text: req.body.list,
             items: []
         }
     );
-    new_list.save().then(()=>       //tallennetaan lista
+    new_list.save().then(()=>
     {
         console.log("list saved");
         user.lists.push(new_list);
-        user.save().then(()=>       //laitetaan luoto lista käyttäjän listoihin 
+        user.save().then(()=>
         {
             return res.redirect("/");
         }
@@ -212,13 +249,13 @@ app.post(`/add-list`,(req,res,next)=>       //listan lisäys
     });
 });
 
-app.post(`/delete-list`,(req,res,next)=>        //listan poisto
+app.post(`/delete-list`,(req,res,next)=>
 {
 const user = req.user;
 const list_id_to_delete = req.body.list_id;
 
 
-list_model.findOne(                 //haetaan poistettava lista kannasta
+list_model.findOne(
     {
         _id: list_id_to_delete
     }
@@ -226,22 +263,22 @@ list_model.findOne(                 //haetaan poistettava lista kannasta
 {
     
     //item_model.remove(
-        item_model.deleteMany(          //poistaa listan taulukossa olevat itemit (list.items sis.- ID:t)
+        item_model.deleteMany(
         {
             _id: {$in: list.items}
         }
     ).then(()=>
     {
-
-        const updated_lists = user.lists.filter((list_id)=>  //poistaa listan käyttäjän taulukosta
+         //remove item form user.notes
+        const updated_lists = user.lists.filter((list_id)=>
         {
             return list_id != list_id_to_delete;    
         });
         user.list = updated_lists;
 
-        user.save().then(()=>       //tallentaa poiston
+        user.save().then(()=>
         {
-            list_model.findByIdAndRemove(list_id_to_delete).then(()=>       //poistaa itse listan
+            list_model.findByIdAndRemove(list_id_to_delete).then(()=>
             {
                 res.redirect(`/`);
             })
@@ -254,18 +291,18 @@ list_model.findOne(                 //haetaan poistettava lista kannasta
 
 
 
-app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>      //shoppinlist sivulle, id listalinkistä
- {                                                                  //tarkistaa onko kirjautunut (sessio)
+app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>
+ {
      const user = req.user;
      list_model.findOne({
-        _id: req.params.id          //osoiterivin id:llä haetaan lista
+        _id: req.params.id
 
     }).then((list)=>
     {
           
-        list.populate(`items`).execPopulate().then(()=>         //ladataan listan itemit
+        list.populate(`items`).execPopulate().then(()=>
         {
-            session.list = list;                //otsikko, kirjautuja sekä log out nappi
+            session.list = list;
             lista=`<html><head><meta charset="UTF-8">
             <link rel="stylesheet" type="text/css"   href="/css/style.css">
             </head>
@@ -277,7 +314,7 @@ app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>      //shoppinlis
             <h2>Shoppinglist: ${list.text}</h2>`
             lista+=`<ul>`;
 
-        list.items.forEach((value,index)=>          //Tulostaa listan itemit (+,- ja delete nappi)
+        list.items.forEach((value,index)=>
         {   
             lista += `<form action="/deleteItem" method="POST"> `;
             lista+=`<li>Product: ${value.text} Amount:  ${value.amount}`;
@@ -292,7 +329,7 @@ app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>      //shoppinlis
         });
         lista += `</ul>`;
        
-        res.write(`   ${lista}`);           //Itemin lisäys nappi
+        res.write(`   ${lista}`);
         res.write(`
         <form action="/addItem" method="POST">
         Name of the item
@@ -307,57 +344,55 @@ app.get(`/shoppinglist/:id`,is_logged_handler,(req,res,next)=>      //shoppinlis
         `)
         res.end();
     });
-}).catch(()=>               //jos yritettiin id:llä jota ei olemassa
-{   console.log("Kyseinen lista id väärin")
-    res.redirect(`/`);
-})
+});
  });
     
 
-app.post("/addItem",(req,res,next)=>   //lisätään itemi listalle
+app.post("/addItem",(req,res,next)=>
 {
     const user = req.user;
     const list = session.list;
     console.log(list._id);
 
-    let new_item = item_model(          //luodaan itemi
+    let new_item = item_model(
         {
             text: req.body.item,
             amount: req.body.amount,
             image: req.body.image
          }
     );
-    new_item.save().then(()=>           //tallennetaan itemi
+    new_item.save().then(()=>
     {
         console.log("item saved");
-       list.items.push(new_item);   //laitetaan käyttäjän taulukkoon ja tallennetaan
+       list.items.push(new_item);
     list.save().then(()=>
                 {
-                    return res.redirect(`/shoppinglist/${list._id}`);   //takaisin lista sivulle id:llä
+                    return res.redirect(`/shoppinglist/${list._id}`);
                 });
             });
         });
     
         
-app.post("/deleteItem",(req,res,next)=>     //poistetaan itemi
+app.post("/deleteItem",(req,res,next)=>
 {
     
     const user = req.user;
 const item_id_to_delete = req.body.id;
 const list = session.list;
 
-const updated_lists = list.items.filter((item_id)=>     //poistetaan itemi listan taulukosta
+//remove item form user.notes
+const updated_lists = list.items.filter((item_id)=>
 {
     return item_id != item_id_to_delete;
 });
 list.items = updated_lists;
 
-list.save().then(()=>           //tallenetaan poisto
+list.save().then(()=>
 {
-    item_model.findByIdAndRemove(item_id_to_delete).then(()=>  //poistetaan itse itemi
+    item_model.findByIdAndRemove(item_id_to_delete).then(()=>
         {
             console.log("Ei deleten loppuun");
-            return res.redirect(`/shoppinglist/${list._id}`);       //takaisin listan sivulle
+            return res.redirect(`/shoppinglist/${list._id}`);
         });
    
 }
@@ -367,39 +402,39 @@ list.save().then(()=>           //tallenetaan poisto
 
 )
 
-app.post("/increase",(req,res,next)=>       //kasvatetaan itemin amounttia
+app.post("/increase",(req,res,next)=>
 {
     const user = req.user;
     const item_id_to_increase = req.body.id;
     const list = session.list;
 
-    item_model.findOne({            //haetaan itemi kannasta
+    item_model.findOne({
         _id: item_id_to_increase
     }).then((item)=>{
-        item.amount++;      //kasvatetaan amounttia ja tallennetaan
+        item.amount++;
         item.save();
 
     }).then(()=>{
         console.log(list._id);
-    return res.redirect(`/shoppinglist/${list._id}`);       //takaisin lista sivulle
+    return res.redirect(`/shoppinglist/${list._id}`);
 })
 });
 
-app.post("/decrease",(req,res,next)=>           //pienennetään itemin amounttia
+app.post("/decrease",(req,res,next)=>
 {
     const user = req.user;
     const item_id_to_decrease = req.body.id;
     const list = session.list;
 
     item_model.findOne({
-        _id: item_id_to_decrease            //haetaan kannasta
+        _id: item_id_to_decrease
     }).then((item)=>{
-        item.amount--;      //pienennetään ja tallennetaan
+        item.amount--;
         item.save();
 
     }).then(()=>{
         console.log(list._id);
-    return res.redirect(`/shoppinglist/${list._id}`);       //takaisin lista sivulle
+    return res.redirect(`/shoppinglist/${list._id}`);
 })
 })
 
