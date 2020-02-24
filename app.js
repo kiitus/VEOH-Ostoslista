@@ -330,7 +330,7 @@ app.post("/addItem",(req,res,next)=>   //lisätään itemi listalle
     new_item.save().then(()=>           //tallennetaan itemi
     {
         console.log("item saved");
-       list.items.push(new_item);   //laitetaan käyttäjän taulukkoon ja tallennetaan
+       list.items.push(new_item);   //laitetaan listan taulukkoon ja tallennetaan
     list.save().then(()=>
                 {
                     return res.redirect(`/shoppinglist/${list._id}`);   //takaisin lista sivulle id:llä
