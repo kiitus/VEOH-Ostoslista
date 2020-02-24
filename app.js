@@ -77,7 +77,7 @@ app.use((req,res,next)=>{
 
 //get ladataan osoite sivun pyynnöllä
 app.get('/login', (req, res, next) => {     //Login sivun lataus
-    console.log('user: ', req.session.user)    //Formi lähettään kirjautuvan nimimerkin
+    console.log('user: ', req.session.user)    
     res.write(`
     <html>
     <head><meta charset="UTF-8">
@@ -96,8 +96,8 @@ app.get('/login', (req, res, next) => {     //Login sivun lataus
         </form>
     </body>
     <html>
-    `);
-    res.end();              //Formi lähettää rekisteröityvän nimen
+    `);                        //login formi lähettää sisäänkirjautujan nimen
+    res.end();              //Registeri formi lähettää rekisteröityvän nimen
 });
 
 
